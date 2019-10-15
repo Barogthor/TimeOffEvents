@@ -54,10 +54,13 @@ module Logic =
         userRequests.Add (event.Request.RequestId, newRequestState)
 
     let overlapsWith request1 request2 =
-        false //TODO: write a function that checks if 2 requests overlap
-
+        let overlapRange = request1.Start.Date < request2.End.Date && request1.End.Date > request2.Start.Date
+        let overlapDay r1 r2 = r1.Start.Date = r2.End.Date && (r1.Start.HalfDay = HalfDay.AM && r2.End.HalfDay = HalfDay.PM )
+        overlapRange || (overlapDay request1 request2 || overlapDay request2 request1) 
+        
     let overlapsWithAnyRequest (otherRequests: TimeOffRequest seq) request =
-        false //TODO: write this function using overlapsWith
+        let lambda otherRequest = overlapsWith request otherRequest
+        not(Seq.length otherRequests = 0) && Seq.forall lambda otherRequests
 
     let createRequest activeUserRequests  request =
         if request |> overlapsWithAnyRequest activeUserRequests then

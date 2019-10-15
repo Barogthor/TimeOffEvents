@@ -32,6 +32,40 @@ let overlapTests =
 
       Expect.isTrue (Logic.overlapsWith request request) "A request should overlap with istself"
     }
+    
+    test "A requests same day overlap" {
+      let request1 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 2); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+      }
+      let request2 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+      }
+
+      Expect.isTrue (Logic.overlapsWith request1 request2) "The 2 requests should overlap for the same day"
+    }
+    
+    test "A requests same day which doesn't overlap" {
+      let request1 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 2); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+      }
+      let request2 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+        End = { Date = DateTime(2019, 10, 3); HalfDay = AM }
+      }
+
+      Expect.isFalse (Logic.overlapsWith request1 request2) "The 2 requests shouldn't overlap for the same day"
+    }
 
     test "Requests on 2 distinct days don't overlap" {
       let request1 = {
@@ -50,6 +84,52 @@ let overlapTests =
 
       Expect.isFalse (Logic.overlapsWith request1 request2) "The requests don't overlap"
     }
+    
+    test "Requests on 3 distinct days don't overlap" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 1); HalfDay = PM }
+      }
+
+      let otherRequests = List.toSeq [
+        {
+          UserId = "jdoe"
+          RequestId = Guid.NewGuid()
+          Start = { Date = DateTime(2019, 10, 2); HalfDay = AM }
+          End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+        };
+        {
+          UserId = "jdoe"
+          RequestId = Guid.NewGuid()
+          Start = { Date = DateTime(2019, 11, 2); HalfDay = AM }
+          End = { Date = DateTime(2019, 11, 2); HalfDay = PM }
+        }
+      ]
+
+      Expect.isFalse (Logic.overlapsWithAnyRequest otherRequests request) "The requests don't overlap"
+    }
+    
+    test "Requests overlaps on a range" {
+      let request = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 7); HalfDay = PM }
+      }
+
+      let otherRequests = List.toSeq [
+        {
+          UserId = "jdoe"
+          RequestId = Guid.NewGuid()
+          Start = { Date = DateTime(2019, 10, 5); HalfDay = AM }
+          End = { Date = DateTime(2019, 10, 12); HalfDay = PM }
+        };
+      ]
+
+      Expect.isTrue (Logic.overlapsWithAnyRequest otherRequests request) "The requests range overlap"
+    }
   ]
 
 [<Tests>]
@@ -66,6 +146,44 @@ let creationTests =
       |> ConnectedAs (Employee "jdoe")
       |> When (RequestTimeOff request)
       |> Then (Ok [RequestCreated request]) "The request should have been created"
+    }
+    
+    test "A request isn't overlapping" {
+      let request1 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+      
+      let request2 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = PM }
+        End = { Date = DateTime(2019, 12, 28); HalfDay = PM } }
+
+      Given [ RequestCreated request1 ]
+      |> ConnectedAs (Employee "jdoe")
+      |> When (RequestTimeOff request2)
+      |> Then (Ok [RequestCreated request2]) "The request should have been created"
+    }
+    
+    test "A request is overlapping" {
+      let request1 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+      
+      let request2 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
+        End = { Date = DateTime(2019, 12, 28); HalfDay = PM } }
+
+      Given [ RequestCreated request1 ]
+      |> ConnectedAs (Employee "jdoe")
+      |> When (RequestTimeOff request2)
+      |> Then (Error "Overlapping request") "The request shouldn't have been created"
     }
   ]
 

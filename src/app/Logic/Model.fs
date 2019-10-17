@@ -1,45 +1,76 @@
 ﻿namespace TimeOff
 
 open System
+open System
 
 // Then our commands
 type Command =
     | RequestTimeOff of TimeOffRequest
     | ValidateRequest of UserId * Guid
+    | DeclineRequest of UserId * Guid
+    | CancelRequest of UserId * Guid
+    | DeclineCancellationRequest of UserId * Guid
     with
     member this.UserId =
         match this with
         | RequestTimeOff request -> request.UserId
         | ValidateRequest (userId, _) -> userId
+        | DeclineRequest (userId, _) -> userId
+        | CancelRequest (userId, _) -> userId
+        | DeclineCancellationRequest (userId, _) -> userId
 
 // And our events
 type RequestEvent =
     | RequestCreated of TimeOffRequest
     | RequestValidated of TimeOffRequest
+    | RequestDeclined of TimeOffRequest
+    | RequestCancellationDeclined of TimeOffRequest
+    | RequestCancellationCreated of TimeOffRequest
+    | RequestCancelled of TimeOffRequest
     with
     member this.Request =
         match this with
         | RequestCreated request -> request
         | RequestValidated request -> request
+        | RequestDeclined request -> request
+        | RequestCancellationDeclined request -> request
+        | RequestCancellationCreated request -> request
+        | RequestCancelled request -> request
 
 // We then define the state of the system,
 // and our 2 main functions `decide` and `evolve`
 module Logic =
 
+    let getCurrentDate =
+        DateTime.Today
+        
     type RequestState =
         | NotCreated
         | PendingValidation of TimeOffRequest
-        | Validated of TimeOffRequest with
+        | Validated of TimeOffRequest
+        | Declined of TimeOffRequest 
+        | PendingCancellation of TimeOffRequest 
+        | CancellationDeclined of TimeOffRequest 
+        | Cancelled of TimeOffRequest with
         member this.Request =
             match this with
             | NotCreated -> invalidOp "Not created"
             | PendingValidation request
-            | Validated request -> request
+            | Validated request
+            | Declined request
+            | PendingCancellation request
+            | CancellationDeclined request
+            | Cancelled request -> request
         member this.IsActive =
             match this with
+            | Cancelled _
+            | Declined _
             | NotCreated -> false
+            
             | PendingValidation _
-            | Validated _ -> true
+            | Validated _
+            | PendingCancellation _ 
+            | CancellationDeclined _ -> true
 
     type UserRequestsState = Map<Guid, RequestState>
 
@@ -47,7 +78,11 @@ module Logic =
         match event with
         | RequestCreated request -> PendingValidation request
         | RequestValidated request -> Validated request
-
+        | RequestDeclined request -> Declined request
+        | RequestCancellationDeclined request -> CancellationDeclined request
+        | RequestCancellationCreated request -> PendingCancellation request
+        | RequestCancelled request -> Cancelled request
+        
     let evolveUserRequests (userRequests: UserRequestsState) (event: RequestEvent) =
         let requestState = defaultArg (Map.tryFind event.Request.RequestId userRequests) NotCreated
         let newRequestState = evolveRequest requestState event
@@ -62,11 +97,10 @@ module Logic =
         let lambda otherRequest = overlapsWith request otherRequest
         not(Seq.length otherRequests = 0) && Seq.forall lambda otherRequests
 
-    let createRequest activeUserRequests  request =
+    let createRequest activeUserRequests request =
         if request |> overlapsWithAnyRequest activeUserRequests then
             Error "Overlapping request"
-        // This DateTime.Today must go away!
-        elif request.Start.Date <= DateTime.Today then
+        elif request.Start.Date <= getCurrentDate then
             Error "The request starts in the past"
         else
             Ok [RequestCreated request]
@@ -77,12 +111,58 @@ module Logic =
             Ok [RequestValidated request]
         | _ ->
             Error "Request cannot be validated"
+            
+    let declineRequest requestState =
+        match requestState with
+        | PendingValidation request ->
+            Ok [RequestDeclined request]
+        | PendingCancellation request ->
+            Ok [RequestCancellationDeclined request]
+        | _ ->
+            Error "Request cannot be declined"
+            
+    let cancelRequest requestState user =
+        match requestState, user with
+        | PendingValidation request, Manager
+        | PendingCancellation request, Manager
+        | CancellationDeclined request, Manager
+        | Validated request, Manager ->
+            Ok [RequestCancelled request]
+  
+        | PendingValidation request, Employee _ when request.Start.Date > getCurrentDate  ->
+            Ok [RequestCancelled request]
+            
+        | PendingValidation request, Employee _
+        | Validated request, Employee _ ->
+            Ok [RequestCancellationCreated request]
+            
+        | PendingCancellation _, Employee _
+        | CancellationDeclined _, Employee _ ->
+            Error "Unsupported request as user"
+        
+        | _ ->
+            Error "Request cannot be cancelled"
 
     let decide (userRequests: UserRequestsState) (user: User) (command: Command) =
         let relatedUserId = command.UserId
         match user with
         | Employee userId when userId <> relatedUserId ->
             Error "Unauthorized"
+        | Manager ->
+            match command with
+            | ValidateRequest (_, requestId) ->
+                let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
+                validateRequest requestState
+                
+            | DeclineRequest (_, requestId) ->
+                let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
+                declineRequest requestState
+                
+            | CancelRequest (_, requestId) ->
+                let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
+                cancelRequest requestState user
+            | _ -> Error "Unsupported request as manager"
+
         | _ ->
             match command with
             | RequestTimeOff request ->
@@ -95,9 +175,8 @@ module Logic =
 
                 createRequest activeUserRequests request
 
-            | ValidateRequest (_, requestId) ->
-                if user <> Manager then
-                    Error "Unauthorized"
-                else
-                    let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
-                    validateRequest requestState
+            | CancelRequest (_, requestId) ->
+                let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
+                cancelRequest requestState user
+            
+            | _ -> Error "Unsupported request as user"

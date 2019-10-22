@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp2.0</TargetFramework>
+
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Tests.fs"/>
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.2.0" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.2.0" />
+        <PackageReference Include="xunit" Version="2.4.0"/>
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.4.0"/>
+        <ProjectReference Include="..\..\app\Server\Server.fsproj">
+            <Name>Server.fsproj</Name>
+        </ProjectReference>
+        <ProjectReference Include="..\..\app\Storage\Storage.fsproj">
+            <Name>Storage.fsproj</Name>
+        </ProjectReference>
+        <ProjectReference Include="..\..\app\Shared\Shared.fsproj">
+            <Name>Shared.fsproj</Name>
+        </ProjectReference>
+        <ProjectReference Include="..\..\app\Logic\Logic.fsproj">
+            <Name>Logic.fsproj</Name>
+        </ProjectReference>
+    </ItemGroup>
+
+</Project>

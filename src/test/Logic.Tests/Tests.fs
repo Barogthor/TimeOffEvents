@@ -2,6 +2,7 @@ module TimeOff.Tests
 
 open Expecto
 open System
+open TimeOff
 
 let Given (events: RequestEvent list) = events
 let ConnectedAs (user: User) (events: RequestEvent list) = events, user
@@ -19,10 +20,6 @@ let Then expected message (events: RequestEvent list, user: User, command: Comma
 //    System.Console.WriteLine globalState
 //    System.Console.WriteLine userRequestsState
     Expect.equal result expected message
-
-open System
-open System
-open TimeOff
 
 [<Tests>]
 let overlapTests = 
@@ -68,8 +65,24 @@ let overlapTests =
         Start = { Date = DateTime(2019, 10, 2); HalfDay = PM }
         End = { Date = DateTime(2019, 10, 3); HalfDay = AM }
       }
+      Expect.isFalse (Logic.overlapsWith request1 request2) "The 2 requests shouldn't overlap"
+    }
+    
+    test "requests shouldn't overlaps" {
+      let request1 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 5); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 5); HalfDay = PM }
+      }
+      let request2 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime(2019, 10, 6); HalfDay = AM }
+        End = { Date = DateTime(2019, 10, 6); HalfDay = PM }
+      }
 
-      Expect.isFalse (Logic.overlapsWith request1 request2) "The 2 requests shouldn't overlap for the same day"
+      Expect.isFalse (Logic.overlapsWith request1 request2) "The 2 requests shouldn't overlap"
     }
 
     test "Requests on 2 distinct days don't overlap" {
@@ -478,6 +491,5 @@ let permissionsTests =
       |> When (CancelRequest ("jdoe", request.RequestId))
       |> Then (Error "Unsupported request as user") "The cancel request of a declined cancellation request one can only be done by a Manager"
     }
-
-
+    
   ]

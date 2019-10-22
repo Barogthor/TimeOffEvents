@@ -76,6 +76,7 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
         result
         
     choose [
+        route "/" >=> GET >=> text "Hello world!"
         subRoute "/api"
             (choose [
                 route "/users/login" >=> POST >=> Auth.Handlers.login

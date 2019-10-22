@@ -95,7 +95,7 @@ module Logic =
         
     let overlapsWithAnyRequest (otherRequests: TimeOffRequest seq) request =
         let lambda otherRequest = overlapsWith request otherRequest
-        not(Seq.length otherRequests = 0) && Seq.forall lambda otherRequests
+        Seq.exists lambda otherRequests
 
     let createRequest activeUserRequests request =
         if request |> overlapsWithAnyRequest activeUserRequests then

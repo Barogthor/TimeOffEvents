@@ -1,17 +1,25 @@
 module Tests
 
 open System
+open System
 open System.Net
 open System.Net.Http
 open System.IO
+open System.Net.Mime
+open System.Net.Mime
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
 open Microsoft.Extensions.DependencyInjection
 open FSharp.Control.Tasks.V2.ContextInsensitive
+open Newtonsoft.Json
+open Newtonsoft.Json
+open Newtonsoft.Json
 open ServerCode.App
 open Storage.Events
 open TimeOff
+open TimeOff.AuthTypes
+open TimeOff.AuthTypes
 open Xunit
 
 // ---------------------------------
@@ -45,6 +53,10 @@ let get (client : HttpClient) (path : string) =
     path
     |> client.GetAsync
 
+let post (client : HttpClient) (path : string) (data : string) =
+    let httpContent = new StringContent(data);
+    client.PostAsync(path, httpContent)
+
 let createRequest (method : HttpMethod) (path : string) =
     let url = "http://127.0.0.1" + path
     new HttpRequestMessage(method, url)
@@ -76,7 +88,6 @@ let shouldEqual expected actual =
 // Tests
 // ---------------------------------
 
-
 [<Fact>]
 let ``Hello world test`` () =
     task {
@@ -89,4 +100,54 @@ let ``Hello world test`` () =
             |> readText
         content
         |> shouldEqual "Hello world!"
+    }
+
+type Credentials = {
+    UserName: string
+    Password: string
+}
+
+[<Fact>]
+let ``Login successful`` () =
+    task {
+        use server = new TestServer(createHost())
+        use client = server.CreateClient()
+        let name = "employee1" 
+        let login = {
+            UserName = name
+            Password = name
+        }
+        let json = JsonConvert.SerializeObject login
+        let! response = post client "/api/users/login" json
+        let! content =
+            response
+            |> isStatus HttpStatusCode.OK
+            |> readText
+            
+        let result: UserData = JsonConvert.DeserializeObject<UserData> content
+        result.UserName
+        |> shouldEqual name
+        
+        Assert.Equal((Employee name), result.User)
+    }
+    
+[<Fact>]
+let ``Login unsuccessful`` () =
+    task {
+        use server = new TestServer(createHost())
+        use client = server.CreateClient()
+        let login = {
+            UserName = "john"
+            Password = "john"
+        }
+        let json = JsonConvert.SerializeObject login
+        let! response = post client "/api/users/login" json
+        let! content =
+            response
+            |> isStatus HttpStatusCode.Unauthorized
+            |> readText 
+            
+        content
+        |> shouldEqual (sprintf "\"User '%s' can't be logged in.\"" login.UserName)
+        
     }

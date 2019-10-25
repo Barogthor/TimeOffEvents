@@ -46,19 +46,6 @@ let createHost() =
 // Helper functions
 // ---------------------------------
 
-let get (client : HttpClient) (path : string) =
-    path
-    |> client.GetAsync
-
-let post (client : HttpClient) (path : string) (data : string) =
-    let httpContent = new StringContent(data);
-    client.PostAsync(path, httpContent)
-
-let postAuth (client: HttpClient) (path : string) (data : string) (jwt : string) =
-    let httpContent = new StringContent(data);
-    httpContent.Headers.TryAddWithoutValidation("Authorization", ("Bearer "+jwt))
-    client.PostAsync(path, httpContent)
-
 let createRequest (method : HttpMethod) (path : string) =
     let url = "http://127.0.0.1" + path
     new HttpRequestMessage(method, url)
@@ -94,6 +81,22 @@ let shouldNotEqual (expected: 'a) (actual: 'a) =
 
 let getUserAuthentified content : UserData =
     JsonConvert.DeserializeObject<UserData> content
+    
+    
+let get (client : HttpClient) (path : string) =
+    path
+    |> client.GetAsync
+
+let post (client : HttpClient) (path : string) (data : string) =
+    let httpContent = new StringContent(data);
+    client.PostAsync(path, httpContent)
+
+let postAuth (client: HttpClient) (path : string) (data : string) (jwt : string) =
+    let httpContent = new StringContent(data);
+//    httpContent.Headers.TryAddWithoutValidation("Authorization", ("Bearer "+jwt))
+    client.DefaultRequestHeaders.Add("Authorization", "Bearer "+jwt)
+    client.PostAsync(path, httpContent)
+
 // ---------------------------------
 // Tests
 // ---------------------------------
@@ -164,7 +167,7 @@ let ``Login unsuccessful`` () =
     }
     
 //TODO
-//[<Fact>]
+[<Fact>]
 let ``Request timeoff`` () =
     task {
         use server = new TestServer(createHost())
@@ -195,9 +198,9 @@ let ``Request timeoff`` () =
         let! response = postAuth client "/api/timeoff/request" json user.Token
         let! content =
             response
-//            |> isStatus HttpStatusCode.OK
+            |> isStatus HttpStatusCode.OK
             |> readText
         
-        content |> shouldEqual ""
+        content |> shouldNotEqual ""
         
     }

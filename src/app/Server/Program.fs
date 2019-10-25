@@ -66,7 +66,7 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
 
         // Decide how to handle the command
         let result = Logic.decide state user command
-
+        
         // Save events in case of success
         match result with
         | Ok events -> eventStream.Append(events)

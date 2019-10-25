@@ -1,11 +1,11 @@
 module Tests
 
 open System
-open System
+open System.Diagnostics
 open System.Net
 open System.Net.Http
 open System.IO
-open System.Net.Mime
+open System.Net
 open System.Net.Mime
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
@@ -13,12 +13,9 @@ open Microsoft.AspNetCore.TestHost
 open Microsoft.Extensions.DependencyInjection
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open Newtonsoft.Json
-open Newtonsoft.Json
-open Newtonsoft.Json
 open ServerCode.App
 open Storage.Events
 open TimeOff
-open TimeOff.AuthTypes
 open TimeOff.AuthTypes
 open Xunit
 
@@ -57,6 +54,11 @@ let post (client : HttpClient) (path : string) (data : string) =
     let httpContent = new StringContent(data);
     client.PostAsync(path, httpContent)
 
+let postAuth (client: HttpClient) (path : string) (data : string) (jwt : string) =
+    let httpContent = new StringContent(data);
+    httpContent.Headers.TryAddWithoutValidation("Authorization", ("Bearer "+jwt))
+    client.PostAsync(path, httpContent)
+
 let createRequest (method : HttpMethod) (path : string) =
     let url = "http://127.0.0.1" + path
     new HttpRequestMessage(method, url)
@@ -80,10 +82,18 @@ let isOfType (contentType : string) (response : HttpResponseMessage) =
 
 let readText (response : HttpResponseMessage) =
     response.Content.ReadAsStringAsync()
+    
+let deserialize<'a> (content : string) : 'a =
+    JsonConvert.DeserializeObject<'a> content
+    
+let shouldEqual (expected: 'a) (actual: 'a) =
+    Assert.Equal<'a>(expected, actual)
 
-let shouldEqual expected actual =
-    Assert.Equal(expected, actual)
+let shouldNotEqual (expected: 'a) (actual: 'a) =
+    Assert.NotEqual<'a>(expected, actual)
 
+let getUserAuthentified content : UserData =
+    JsonConvert.DeserializeObject<UserData> content
 // ---------------------------------
 // Tests
 // ---------------------------------
@@ -124,11 +134,13 @@ let ``Login successful`` () =
             |> isStatus HttpStatusCode.OK
             |> readText
             
-        let result: UserData = JsonConvert.DeserializeObject<UserData> content
+        let result = content |> deserialize<UserData>
+        
         result.UserName
         |> shouldEqual name
+        result.User
+        |>shouldEqual (Employee name)
         
-        Assert.Equal((Employee name), result.User)
     }
     
 [<Fact>]
@@ -146,8 +158,46 @@ let ``Login unsuccessful`` () =
             response
             |> isStatus HttpStatusCode.Unauthorized
             |> readText 
-            
         content
         |> shouldEqual (sprintf "\"User '%s' can't be logged in.\"" login.UserName)
+        
+    }
+    
+//TODO
+//[<Fact>]
+let ``Request timeoff`` () =
+    task {
+        use server = new TestServer(createHost())
+        use client = server.CreateClient()
+        let name = "employee1"
+        let login = {
+            UserName = name
+            Password = name
+        }
+        let json = JsonConvert.SerializeObject login
+        let! response = post client "/api/users/login" json
+        let! content =
+            response
+            |> isStatus HttpStatusCode.OK
+            |> readText
+            
+        let user = content |> deserialize<UserData>
+        
+        let request = {
+            UserId = name
+            RequestId = Guid.NewGuid()
+            Start = { Date = DateTime(2019, 11, 1); HalfDay = AM }
+            End = { Date = DateTime(2019, 11, 1); HalfDay = PM }
+        }
+        let json = JsonConvert.SerializeObject request
+//        user.Token
+//        |> shouldEqual ""
+        let! response = postAuth client "/api/timeoff/request" json user.Token
+        let! content =
+            response
+//            |> isStatus HttpStatusCode.OK
+            |> readText
+        
+        content |> shouldEqual ""
         
     }

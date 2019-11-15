@@ -21,108 +21,123 @@ let Then expected message (events: RequestEvent list, user: User, command: Comma
 //    System.Console.WriteLine userRequestsState
     Expect.equal result expected message
 
+let getDateFromToday (n: int) =
+  Logic.getCurrentDate.Add (TimeSpan.FromDays (float n) )
+
 [<Tests>]
 let overlapTests = 
   testList "Overlap tests" [
     test "A request overlaps with itself" {
+      let tomorrow = getDateFromToday 1
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 1); HalfDay = PM }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM }
       }
 
       Expect.isTrue (Logic.overlapsWith request request) "A request should overlap with istself"
     }
     
     test "A requests same day overlap" {
+      let tomorrow = getDateFromToday 1
+      let twoDaysLater = getDateFromToday 2
       let request1 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 2); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+        Start = { Date = twoDaysLater; HalfDay = AM }
+        End = { Date = twoDaysLater; HalfDay = PM }
       }
       let request2 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = twoDaysLater; HalfDay = PM }
       }
 
       Expect.isTrue (Logic.overlapsWith request1 request2) "The 2 requests should overlap for the same day"
     }
     
     test "A requests same day which doesn't overlap" {
+      let tomorrow = getDateFromToday 1
+      let twoDaysLater = getDateFromToday 2
       let request1 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 2); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM }
       }
       let request2 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 2); HalfDay = PM }
-        End = { Date = DateTime(2019, 10, 3); HalfDay = AM }
+        Start = { Date = tomorrow; HalfDay = PM }
+        End = { Date = twoDaysLater; HalfDay = AM }
       }
       Expect.isFalse (Logic.overlapsWith request1 request2) "The 2 requests shouldn't overlap"
     }
     
     test "requests shouldn't overlaps" {
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request1 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 5); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 5); HalfDay = PM }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM }
       }
       let request2 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 6); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 6); HalfDay = PM }
+        Start = { Date = sevenDaysLater; HalfDay = AM }
+        End = { Date = sevenDaysLater; HalfDay = PM }
       }
 
       Expect.isFalse (Logic.overlapsWith request1 request2) "The 2 requests shouldn't overlap"
     }
 
     test "Requests on 2 distinct days don't overlap" {
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request1 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 1); HalfDay = PM }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM }
       }
 
       let request2 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 2); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+        Start = { Date = sevenDaysLater; HalfDay = AM }
+        End = { Date = sevenDaysLater; HalfDay = PM }
       }
 
       Expect.isFalse (Logic.overlapsWith request1 request2) "The requests don't overlap"
     }
     
     test "Requests on 3 distinct days don't overlap" {
+      let tomorrow = getDateFromToday 1
+      let fourDaysLater = getDateFromToday 4
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 1); HalfDay = PM }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM }
       }
 
       let otherRequests = List.toSeq [
         {
           UserId = "jdoe"
           RequestId = Guid.NewGuid()
-          Start = { Date = DateTime(2019, 10, 2); HalfDay = AM }
-          End = { Date = DateTime(2019, 10, 2); HalfDay = PM }
+          Start = { Date = fourDaysLater; HalfDay = AM }
+          End = { Date = fourDaysLater; HalfDay = PM }
         };
         {
           UserId = "jdoe"
           RequestId = Guid.NewGuid()
-          Start = { Date = DateTime(2019, 11, 2); HalfDay = AM }
-          End = { Date = DateTime(2019, 11, 2); HalfDay = PM }
+          Start = { Date = sevenDaysLater; HalfDay = AM }
+          End = { Date = sevenDaysLater; HalfDay = PM }
         }
       ]
 
@@ -130,19 +145,22 @@ let overlapTests =
     }
     
     test "Requests overlaps on a range" {
+      let tomorrow = getDateFromToday 1
+      let fourDaysLater = getDateFromToday 4
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 10, 1); HalfDay = AM }
-        End = { Date = DateTime(2019, 10, 7); HalfDay = PM }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = sevenDaysLater; HalfDay = PM }
       }
 
       let otherRequests = List.toSeq [
         {
           UserId = "jdoe"
           RequestId = Guid.NewGuid()
-          Start = { Date = DateTime(2019, 10, 5); HalfDay = AM }
-          End = { Date = DateTime(2019, 10, 12); HalfDay = PM }
+          Start = { Date = fourDaysLater; HalfDay = AM }
+          End = { Date = sevenDaysLater; HalfDay = PM }
         };
       ]
 
@@ -154,11 +172,12 @@ let overlapTests =
 let creationTests =
   testList "Creation tests" [
     test "A request is created" {
+      let tomorrow = getDateFromToday 1
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
 
       Given [ ]
       |> ConnectedAs (Employee "jdoe")
@@ -167,17 +186,19 @@ let creationTests =
     }
     
     test "A request isn't overlapping" {
+      let tomorrow = getDateFromToday 1
+      let twoDaysLater = getDateFromToday 2
       let request1 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
       
       let request2 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = PM }
-        End = { Date = DateTime(2019, 12, 28); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = PM }
+        End = { Date = twoDaysLater; HalfDay = PM } }
 
       Given [ RequestCreated request1 ]
       |> ConnectedAs (Employee "jdoe")
@@ -186,17 +207,19 @@ let creationTests =
     }
     
     test "A request is overlapping" {
+      let tomorrow = getDateFromToday 1
+      let twoDaysLater = getDateFromToday 7
       let request1 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
       
       let request2 = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 28); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = twoDaysLater; HalfDay = PM } }
 
       Given [ RequestCreated request1 ]
       |> ConnectedAs (Employee "jdoe")
@@ -209,11 +232,12 @@ let creationTests =
 let validationTests =
   testList "Validation tests" [
     test "A request is validated" {
+      let tomorrow = getDateFromToday 1
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
 
       Given [ RequestCreated request ]
       |> ConnectedAs Manager
@@ -226,11 +250,13 @@ let validationTests =
 let declineTests =
   testList "Declination tests" [
     test "A pending request is declined" {
+      let tomorrow = getDateFromToday 1
+      
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
 
       Given [ RequestCreated request ]
       |> ConnectedAs Manager
@@ -239,11 +265,13 @@ let declineTests =
     }
     
     test "A pending cancellation request is declined" {
+      let tomorrow = getDateFromToday 1
+      
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
 
       Given [ RequestCancellationCreated request ]
       |> ConnectedAs Manager
@@ -257,11 +285,13 @@ let declineTests =
 let cancelTests =
   testList "Cancellation tests" [
     test "A pending request is cancelled by employee" {
+      let tomorrow = getDateFromToday 1
+      
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
 
       Given [ RequestCreated request ]
       |> ConnectedAs (Employee request.UserId)
@@ -271,12 +301,13 @@ let cancelTests =
     
     test "A pending request can't be cancelled by another employee" {
       let otherUser = "mbob"
+      let tomorrow = getDateFromToday 1
    
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
 
       Given [ RequestCreated request ]
       |> ConnectedAs (Employee otherUser)
@@ -285,12 +316,13 @@ let cancelTests =
     }
     
     test "A pending request is cancelled by employee before starting date (J-1)" {
+      let tomorrow = getDateFromToday 1
    
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
 
       Given [ RequestCreated request ]
       |> ConnectedAs (Employee request.UserId)
@@ -313,8 +345,8 @@ let cancelTests =
     }
     
     test "A pending request is cancelled by employee after the starting date (J+1)" {
-      let yesterday = Logic.getCurrentDate.Add (TimeSpan.FromDays -1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let yesterday = getDateFromToday -1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -342,8 +374,8 @@ let cancelTests =
     }
     
     test "A validated request is cancelled by employee after the starting date (J+1)" {
-      let yesterday = Logic.getCurrentDate.Add (TimeSpan.FromDays -1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let yesterday = getDateFromToday -1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -357,8 +389,8 @@ let cancelTests =
     }
     
     test "A validated request is cancelled by employee before tomorrow (J-1)" {
-      let tomorrow = Logic.getCurrentDate.Add (TimeSpan.FromDays 1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -372,8 +404,8 @@ let cancelTests =
     }
    
     test "A validated request is cancelled by manager" {
-      let tomorrow = Logic.getCurrentDate.Add (TimeSpan.FromDays 1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -387,8 +419,8 @@ let cancelTests =
     }
     
     test "A pending cancellation request is cancelled by manager" {
-      let tomorrow = Logic.getCurrentDate.Add (TimeSpan.FromDays 1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -402,8 +434,8 @@ let cancelTests =
     }
     
     test "A pending request is cancelled by manager" {
-      let tomorrow = Logic.getCurrentDate.Add (TimeSpan.FromDays 1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -417,8 +449,8 @@ let cancelTests =
     }
     
     test "A declined cancellation request is cancelled by manager" {
-      let tomorrow = Logic.getCurrentDate.Add (TimeSpan.FromDays 1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -437,11 +469,12 @@ let cancelTests =
 let permissionsTests =
   testList "permissions tests" [
     test "A pending request is declined by employee" {
+      let tomorrow = getDateFromToday 1
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
-        Start = { Date = DateTime(2019, 12, 27); HalfDay = AM }
-        End = { Date = DateTime(2019, 12, 27); HalfDay = PM } }
+        Start = { Date = tomorrow; HalfDay = AM }
+        End = { Date = tomorrow; HalfDay = PM } }
 
       Given [ RequestCreated request ]
       |> ConnectedAs (Employee request.UserId)
@@ -463,8 +496,8 @@ let permissionsTests =
     }
     
     test "A pending cancellation request is cancelled by employee" {
-      let tomorrow = Logic.getCurrentDate.Add (TimeSpan.FromDays 1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -478,8 +511,8 @@ let permissionsTests =
     }
     
     test "A declined cancellation request is cancelled by employee" {
-      let tomorrow = Logic.getCurrentDate.Add (TimeSpan.FromDays 1.)
-      let sevenDaysLater = Logic.getCurrentDate.Add (TimeSpan.FromDays 7.)
+      let tomorrow = getDateFromToday 1
+      let sevenDaysLater = getDateFromToday 7
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()

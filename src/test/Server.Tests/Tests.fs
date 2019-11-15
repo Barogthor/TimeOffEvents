@@ -23,6 +23,10 @@ open Xunit
 // Test server/client setup
 // ---------------------------------
 
+let getDateFromToday (n: int) =
+  Logic.getCurrentDate.Add (TimeSpan.FromDays (float n) )
+
+
 let createHost() =
     let contentRoot = Directory.GetCurrentDirectory()
 
@@ -185,12 +189,12 @@ let ``Request timeoff`` () =
             |> readText
             
         let user = content |> deserialize<UserData>
-        
+        let tomorrow = getDateFromToday 1
         let request = {
             UserId = name
             RequestId = Guid.NewGuid()
-            Start = { Date = DateTime(2019, 11, 1); HalfDay = AM }
-            End = { Date = DateTime(2019, 11, 1); HalfDay = PM }
+            Start = { Date = tomorrow; HalfDay = AM }
+            End = { Date = tomorrow; HalfDay = PM }
         }
         let json = JsonConvert.SerializeObject request
 //        user.Token

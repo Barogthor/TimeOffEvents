@@ -22,7 +22,7 @@ let Then expected message (events: RequestEvent list, user: User, command: Comma
     Expect.equal result expected message
 
 let getDateFromToday (n: int) =
-  Logic.getCurrentDate.Add (TimeSpan.FromDays (float n) )
+  Logic.getCurrentDate().Add (TimeSpan.FromDays (float n) )
 
 [<Tests>]
 let overlapTests = 
@@ -331,7 +331,7 @@ let cancelTests =
     }
     
     test "A pending request is cancelled by employee at the starting date (J)" {
-      let today = Logic.getCurrentDate
+      let today = Logic.getCurrentDate()
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()
@@ -360,7 +360,7 @@ let cancelTests =
     }
         
     test "A validated request is cancelled by employee at the starting date (J)" {
-      let today = Logic.getCurrentDate
+      let today = Logic.getCurrentDate()
       let request = {
         UserId = "jdoe"
         RequestId = Guid.NewGuid()

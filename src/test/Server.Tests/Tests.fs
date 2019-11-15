@@ -24,7 +24,7 @@ open Xunit
 // ---------------------------------
 
 let getDateFromToday (n: int) =
-  Logic.getCurrentDate.Add (TimeSpan.FromDays (float n) )
+  Logic.getCurrentDate().Add (TimeSpan.FromDays (float n) )
 
 
 let createHost() =

@@ -1,4 +1,4 @@
-﻿namespace TimeOff
+namespace TimeOff
 
 open System
 
@@ -40,7 +40,7 @@ type RequestEvent =
 // and our 2 main functions `decide` and `evolve`
 module Logic =
 
-    let getCurrentDate =
+    let getCurrentDate () = 
         DateTime.Today
         
     type RequestState =
@@ -99,7 +99,7 @@ module Logic =
     let createRequest activeUserRequests request =
         if request |> overlapsWithAnyRequest activeUserRequests then
             Error "Overlapping request"
-        elif request.Start.Date <= getCurrentDate then
+        elif request.Start.Date <= getCurrentDate() then
             Error "The request starts in the past"
         else
             Ok [RequestCreated request]
@@ -128,7 +128,7 @@ module Logic =
         | Validated request, Manager ->
             Ok [RequestCancelled request]
   
-        | PendingValidation request, Employee _ when request.Start.Date > getCurrentDate  ->
+        | PendingValidation request, Employee _ when request.Start.Date > getCurrentDate()  ->
             Ok [RequestCancelled request]
             
         | PendingValidation request, Employee _

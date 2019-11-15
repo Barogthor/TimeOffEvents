@@ -27,7 +27,18 @@ module HttpHandlers =
         UserId: UserId
         RequestId: Guid
     }
-
+    
+    let getHistory (eventStore: IStore<UserId, RequestEvent>) (user: User) =
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                match user with
+                | Employee userId ->
+                    let eventStream = eventStore.GetStream(userId)
+                    let state = eventStream.ReadAll() |> Seq.fold Logic.evolveUserRequests Map.empty
+                    return! json (Seq.toArray state) next ctx
+                | _ -> return! json [0; 1] next ctx
+            }
+            
     let requestTimeOff (handleCommand: Command -> Result<RequestEvent list, string>) =
         fun (next: HttpFunc) (ctx: HttpContext) ->
             task {
@@ -39,11 +50,11 @@ module HttpHandlers =
                 | Error message ->
                     return! (BAD_REQUEST message) next ctx
             }
-
+    
     let validateRequest (handleCommand: Command -> Result<RequestEvent list, string>) =
         fun (next: HttpFunc) (ctx: HttpContext) ->
             task {
-                let userAndRequestId = ctx.BindQueryString<UserAndRequestId>()
+                let! userAndRequestId = ctx.BindJsonAsync<UserAndRequestId>()
                 let command = ValidateRequest (userAndRequestId.UserId, userAndRequestId.RequestId)
                 let result = handleCommand command
                 match result with
@@ -84,7 +95,8 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
                     (Auth.Handlers.requiresJwtTokenForAPI (fun user ->
                         choose [
                             POST >=> route "/request" >=> HttpHandlers.requestTimeOff (handleCommand user)
-                            POST >=> route "/validate-request" >=> HttpHandlers.validateRequest (handleCommand user)
+                            POST >=> route "/validate" >=> HttpHandlers.validateRequest (handleCommand user)
+                            GET >=> route "/history" >=> HttpHandlers.getHistory eventStore user
                         ]
                     ))
             ])

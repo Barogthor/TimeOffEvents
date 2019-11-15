@@ -46,7 +46,7 @@ module HttpHandlers =
                 let command = RequestTimeOff timeOffRequest
                 let result = handleCommand command
                 match result with
-                | Ok _ -> return! json timeOffRequest next ctx
+                | Ok _ -> return! json (RequestCreated timeOffRequest) next ctx
                 | Error message ->
                     return! (BAD_REQUEST message) next ctx
             }
@@ -73,6 +73,20 @@ module HttpHandlers =
                 match result with
                 | Ok [RequestCancelled timeOffRequest] -> return! json (RequestCancelled timeOffRequest) next ctx
                 | Ok [RequestCancellationCreated timeOffRequest] -> return! json (RequestCancellationCreated timeOffRequest) next ctx
+                | Ok _ -> return! Successful.NO_CONTENT next ctx
+                | Error message ->
+                    return! (BAD_REQUEST message) next ctx
+            }
+    
+    let declineRequest (handleCommand: Command -> Result<RequestEvent list, string>) =
+        fun (next: HttpFunc) (ctx: HttpContext) ->
+            task {
+                let! userAndRequestId = ctx.BindJsonAsync<UserAndRequestId>()
+                let command = DeclineRequest (userAndRequestId.UserId, userAndRequestId.RequestId)
+                let result = handleCommand command
+                match result with
+                | Ok [RequestDeclined timeOffRequest] -> return! json (RequestDeclined timeOffRequest) next ctx
+                | Ok [RequestCancellationDeclined timeOffRequest] -> return! json (RequestCancellationDeclined timeOffRequest) next ctx
                 | Ok _ -> return! Successful.NO_CONTENT next ctx
                 | Error message ->
                     return! (BAD_REQUEST message) next ctx
@@ -111,6 +125,7 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
                             POST >=> route "/request" >=> HttpHandlers.requestTimeOff (handleCommand user)
                             POST >=> route "/validate" >=> HttpHandlers.validateRequest (handleCommand user)
                             POST >=> route "/cancel" >=> HttpHandlers.cancelRequest (handleCommand user)
+                            POST >=> route "/decline" >=> HttpHandlers.declineRequest (handleCommand user)
                             GET >=> route "/history" >=> HttpHandlers.getHistory eventStore user
                         ]
                     ))

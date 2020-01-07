@@ -96,10 +96,10 @@ module Logic =
         let lambda otherRequest = overlapsWith request otherRequest
         Seq.exists lambda otherRequests
 
-    let createRequest activeUserRequests request =
+    let createRequest activeUserRequests request (now: DateTime) =
         if request |> overlapsWithAnyRequest activeUserRequests then
             Error "Overlapping request"
-        elif request.Start.Date <= getCurrentDate() then
+        elif request.Start.Date <= now then
             Error "The request starts in the past"
         else
             Ok [RequestCreated request]
@@ -120,7 +120,7 @@ module Logic =
         | _ ->
             Error "Request cannot be declined"
             
-    let cancelRequest requestState user =
+    let cancelRequest requestState user (now: DateTime) =
         match requestState, user with
         | PendingValidation request, Manager
         | PendingCancellation request, Manager
@@ -128,7 +128,7 @@ module Logic =
         | Validated request, Manager ->
             Ok [RequestCancelled request]
   
-        | PendingValidation request, Employee _ when request.Start.Date > getCurrentDate()  ->
+        | PendingValidation request, Employee _ when request.Start.Date > now  ->
             Ok [RequestCancelled request]
             
         | PendingValidation request, Employee _
@@ -142,7 +142,7 @@ module Logic =
         | _ ->
             Error "Request cannot be cancelled"
 
-    let decide (userRequests: UserRequestsState) (user: User) (command: Command) =
+    let decide (userRequests: UserRequestsState) (user: User) (command: Command) (now: DateTime) =
         let relatedUserId = command.UserId
         match user with
         | Employee userId when userId <> relatedUserId ->
@@ -159,7 +159,7 @@ module Logic =
                 
             | CancelRequest (_, requestId) ->
                 let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
-                cancelRequest requestState user
+                cancelRequest requestState user now
             | _ -> Error "Unsupported request as manager"
 
         | _ ->
@@ -172,10 +172,10 @@ module Logic =
                     |> Seq.where (fun state -> state.IsActive)
                     |> Seq.map (fun state -> state.Request)
 
-                createRequest activeUserRequests request
+                createRequest activeUserRequests request now
 
             | CancelRequest (_, requestId) ->
                 let requestState = defaultArg (userRequests.TryFind requestId) NotCreated
-                cancelRequest requestState user
+                cancelRequest requestState user now
             
             | _ -> Error "Unsupported request as user"

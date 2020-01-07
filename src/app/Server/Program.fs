@@ -34,7 +34,8 @@ module HttpHandlers =
                 match user with
                 | Employee userId ->
                     let eventStream = eventStore.GetStream(userId)
-                    let state = eventStream.ReadAll() |> Seq.fold Logic.evolveUserRequests Map.empty
+//                    let state = eventStream.ReadAll() |> Seq.fold Logic.evolveUserRequests Map.empty
+                    let state = eventStream.ReadAll()
                     return! json (Seq.toArray state) next ctx
                 | _ -> return! json [0; 1] next ctx
             }
@@ -102,9 +103,9 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
 
         let eventStream = eventStore.GetStream(userId)
         let state = eventStream.ReadAll() |> Seq.fold Logic.evolveUserRequests Map.empty
-
+        let today = DateTime.Today
         // Decide how to handle the command
-        let result = Logic.decide state user command
+        let result = Logic.decide state user command today
         
         // Save events in case of success
         match result with
@@ -119,6 +120,12 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
         subRoute "/api"
             (choose [
                 route "/users/login" >=> POST >=> Auth.Handlers.login
+                subRoute "/report"
+                    (Auth.Handlers.requiresJwtTokenForAPI (fun user ->
+                        choose [
+                            GET >=> route "/history" >=> HttpHandlers.getHistory eventStore user
+                        ]
+                    ))
                 subRoute "/timeoff"
                     (Auth.Handlers.requiresJwtTokenForAPI (fun user ->
                         choose [
@@ -126,7 +133,6 @@ let webApp (eventStore: IStore<UserId, RequestEvent>) =
                             POST >=> route "/validate" >=> HttpHandlers.validateRequest (handleCommand user)
                             POST >=> route "/cancel" >=> HttpHandlers.cancelRequest (handleCommand user)
                             POST >=> route "/decline" >=> HttpHandlers.declineRequest (handleCommand user)
-                            GET >=> route "/history" >=> HttpHandlers.getHistory eventStore user
                         ]
                     ))
             ])
@@ -172,9 +178,9 @@ let configureLogging (builder: ILoggingBuilder) =
 let main _ =
     let contentRoot = Directory.GetCurrentDirectory()
 
-    let eventStore = InMemoryStore.Create<UserId, RequestEvent>()
-//    let storagePath = System.IO.Path.Combine(contentRoot, "../../../.storage", "userRequests")
-//    let eventStore = FileSystemStore.Create<UserId, RequestEvent>(storagePath, sprintf "%s")
+//    let eventStore = InMemoryStore.Create<UserId, RequestEvent>()
+    let storagePath = System.IO.Path.Combine(contentRoot, "../../../.storage", "userRequests")
+    let eventStore = FileSystemStore.Create<UserId, RequestEvent>(storagePath, sprintf "%s")
 
     let webRoot = Path.Combine(contentRoot, "WebRoot")
     WebHostBuilder()

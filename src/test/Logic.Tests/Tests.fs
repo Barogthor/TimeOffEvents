@@ -15,7 +15,7 @@ let Then expected message (events: RequestEvent list, user: User, command: Comma
     
     let globalState = Seq.fold evolveGlobalState Map.empty events
     let userRequestsState = defaultArg (Map.tryFind command.UserId globalState) Map.empty
-    let result = Logic.decide userRequestsState user command
+    let result = Logic.decide userRequestsState user command (Logic.getCurrentDate())
 //    System.Console.WriteLine "==============="
 //    System.Console.WriteLine globalState
 //    System.Console.WriteLine userRequestsState

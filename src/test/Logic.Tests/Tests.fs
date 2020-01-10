@@ -526,3 +526,51 @@ let permissionsTests =
     }
     
   ]
+  
+[<Tests>]
+let leaveTests =
+  testList "leave balance tests" [
+    test "range should have only working days" {
+      let sylvestre = DateTime.Parse("31/12/2019")
+      let tenDaysLater = DateTime.Parse("09/01/2020")
+      let daysFromTomorrowToTenDaysLater = Leave.listWorkingDaysFromRange sylvestre tenDaysLater
+      let countWorkingDays = daysFromTomorrowToTenDaysLater.Length
+      let devoidOfWEDays = daysFromTomorrowToTenDaysLater |> List.forall Leave.isNotWEDay
+      Expect.isTrue devoidOfWEDays "the range has WE and holiday days that should have been filtered"
+      Expect.equal countWorkingDays 7 "without WE days, the count is 8"
+    }
+    
+    test "" {
+      let timeoff1 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime.Parse("20/12/2019"); HalfDay = AM }
+        End = { Date = DateTime.Parse("25/12/2019"); HalfDay = PM } }
+      let timeoff2 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime.Parse("26/12/2019"); HalfDay = AM }
+        End = { Date = DateTime.Parse("28/12/2019"); HalfDay = PM } }
+      let timeoff3 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime.Parse("29/12/2019"); HalfDay = AM }
+        End = { Date = DateTime.Parse("31/12/2019"); HalfDay = PM } }
+      let timeoff4 = {
+        UserId = "jdoe"
+        RequestId = Guid.NewGuid()
+        Start = { Date = DateTime.Parse("29/12/2018"); HalfDay = AM }
+        End = { Date = DateTime.Parse("31/12/2018"); HalfDay = PM } }
+      let list = [timeoff1; timeoff2; timeoff3; timeoff4]
+      let year2019 = DateTime(2019,12,30)
+      let accruedLeaves = int(Leave.getAccruedLeave year2019)
+      let takenLeaves = Leave.getTakenLeaveToDate year2019 (list |> List.filter (fun timeoff -> timeoff.Start.Date.Year = year2019.Year))
+      let plannedLeaves = Leave.getPlannedLeave year2019 (list |> List.filter (fun timeoff -> timeoff.Start.Date.Year = year2019.Year))
+      let leavesBalance = int(Leave.getBalance year2019 list)
+      Expect.equal accruedLeaves 22 "A whole year minus 1 month  should give 22 days off"
+      Expect.floatClose Accuracy.low takenLeaves 6. "The total timeoff leaves taken should be 6"
+      Expect.floatClose Accuracy.low plannedLeaves 1. "The total timeoff planned should be 1"
+      Expect.equal leavesBalance 39 "There should be 39 days off left after the balance"
+      
+    }
+  ]

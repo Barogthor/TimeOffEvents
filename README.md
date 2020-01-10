@@ -6,7 +6,7 @@ Just clone the repo or download it, and get started coding and testing in F#!
 
 To get started, just dotnet run in the folder to run the Expecto tests.
 <h2>Example Timeoff request:</h2>
-```json
+<pre><code>
 {
 	"userId": "employee1",
 	"requestId": "4c569e0e-fd7a-4f5c-80d2-d7f286691cb3",
@@ -19,12 +19,12 @@ To get started, just dotnet run in the folder to run the Expecto tests.
 		"halfDay": {"Case": "PM" }
 	}
 }
-```
+</code></pre>
 
 <h2>Example validate, cancel, decline (json):</h2>
-```json
+<pre><code>
 {
       "userId": "employee1",
       "requestId": "4c569e0e-fd7a-4f5c-80d2-d7f286691cb3"
 }
-```
+</code></pre>
